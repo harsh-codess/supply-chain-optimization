@@ -1,0 +1,29 @@
+# Supply Chain Risk Monitor — .gitignore
+
+# ── Environment files (never commit API keys) ──────────────────────────
+backend/.env
+frontend/.env
+*.env.local
+
+# ── Python ─────────────────────────────────────────────────────────────
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+**/__pycache__/
+*.py[cod]
+
+# ── Node / Frontend ─────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ── Firebase ────────────────────────────────────────────────────────────
+.firebase/
+firebase-debug.log
+
+# ── macOS ───────────────────────────────────────────────────────────────
+.DS_Store
+
+# ── IDE ─────────────────────────────────────────────────────────────────
+.vscode/
+.idea/

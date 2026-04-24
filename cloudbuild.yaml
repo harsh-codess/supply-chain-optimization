@@ -1,0 +1,52 @@
+# Supply Chain Risk Monitor — Cloud Run Deployment
+# Usage: gcloud builds submit --config cloudbuild.yaml
+
+substitutions:
+  _SERVICE_NAME: supply-chain-backend
+  _REGION: us-central1
+  _IMAGE: gcr.io/$PROJECT_ID/supply-chain-backend
+
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - build
+      - '-t'
+      - '$_IMAGE:$SHORT_SHA'
+      - '-t'
+      - '$_IMAGE:latest'
+      - '.'
+    dir: 'backend'
+
+  # Push image to Google Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - push
+      - '--all-tags'
+      - '$_IMAGE'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - '$_SERVICE_NAME'
+      - '--image=$_IMAGE:$SHORT_SHA'
+      - '--region=$_REGION'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--port=8080'
+      - '--memory=512Mi'
+      - '--cpu=1'
+      - '--min-instances=0'
+      - '--max-instances=10'
+      - '--set-env-vars=GEMINI_API_KEY=$$GEMINI_API_KEY,OPENWEATHER_API_KEY=$$OPENWEATHER_API_KEY'
+      - '--set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest,OPENWEATHER_API_KEY=OPENWEATHER_API_KEY:latest'
+
+images:
+  - '$_IMAGE:$SHORT_SHA'
+  - '$_IMAGE:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
