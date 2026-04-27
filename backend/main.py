@@ -92,6 +92,11 @@ reroute_state = {"active": False, "disrupted_edges": [], "alternate_route": []}
 # Auto-detected event queue (cleared after frontend acknowledges)
 pending_auto_event: dict | None = None
 
+# FCM tokens registered by frontend clients (phone / browser)
+fcm_tokens: set[str] = set()
+
+FCM_SERVER_KEY = os.getenv("FCM_SERVER_KEY", "")
+
 
 # ── Pydantic Models ────────────────────────────────────────────────────────
 
@@ -105,6 +110,10 @@ class DisruptionPayload(BaseModel):
 class ReroutePayload(BaseModel):
     disrupted_edges: list[list[str]]
     alternate_route: list[str]
+
+
+class FcmTokenPayload(BaseModel):
+    token: str
 
 
 # ── Cascade Propagation ───────────────────────────────────────────────────
@@ -157,7 +166,36 @@ def serialize_graph():
     return {"nodes": nodes, "edges": edges, "reroute": reroute_state, "auto_event": pending_auto_event}
 
 
-# ── Gemini AI Call ─────────────────────────────────────────────────────────
+# ── FCM Push Notifications ───────────────────────────────────────────────
+
+def send_push_notification(title: str, body: str, data: dict | None = None):
+    """Send FCM push to all registered tokens via FCM HTTP API."""
+    if not FCM_SERVER_KEY or not fcm_tokens:
+        return
+    try:
+        for token in list(fcm_tokens):
+            payload = {
+                "to": token,
+                "notification": {"title": title, "body": body},
+                "data": data or {},
+                "android": {"priority": "high"},
+                "apns": {"headers": {"apns-priority": "10"}},
+            }
+            resp = requests.post(
+                "https://fcm.googleapis.com/fcm/send",
+                json=payload,
+                headers={
+                    "Authorization": f"key={FCM_SERVER_KEY}",
+                    "Content-Type": "application/json",
+                },
+                timeout=10,
+            )
+            if resp.status_code != 200:
+                print(f"FCM error {resp.status_code}: {resp.text}")
+    except Exception as e:
+        print(f"FCM send failed: {e}")
+
+
 
 async def call_gemini(node_id: str, severity: float, disruption_type: str, context: str) -> str:
     affected = []
@@ -365,6 +403,14 @@ async def trigger_disruption(payload: DisruptionPayload):
         payload.context,
     )
 
+    # Push notification to registered devices
+    node_label = payload.node_id.replace("_", " ")
+    send_push_notification(
+        title=f"⚡ Disruption: {node_label}",
+        body=f"{payload.disruption_type.replace('_', ' ').title()} — {int(payload.severity*100)}% severity. Gemini rerouting activated.",
+        data={"node_id": payload.node_id, "severity": str(payload.severity)},
+    )
+
     return {
         "graph": serialize_graph(),
         "ai_response": ai_response,
@@ -404,6 +450,14 @@ async def acknowledge_event():
     global pending_auto_event
     pending_auto_event = None
     return {"status": "cleared"}
+
+
+@app.post("/register-fcm")
+async def register_fcm(payload: FcmTokenPayload):
+    """Store FCM token from a browser/phone client."""
+    fcm_tokens.add(payload.token)
+    print(f"FCM token registered. Total devices: {len(fcm_tokens)}")
+    return {"status": "registered", "devices": len(fcm_tokens)}
 
 
 if __name__ == "__main__":

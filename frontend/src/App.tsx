@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import ControlPanel from "./components/ControlPanel";
 import GraphPanel from "./components/GraphPanel";
 import AIPanel from "./components/AIPanel";
-import { getGraph, triggerDisruption, resetGraph, executeReroute, ackEvent } from "./lib/api";
-import { logDisruption } from "./lib/firebase";
+import { getGraph, triggerDisruption, resetGraph, executeReroute, ackEvent, registerFcmToken } from "./lib/api";
+import { logDisruption, initPushNotifications } from "./lib/firebase";
 import type { GraphData, DisruptionType } from "./types";
 
 // Alternate routes mapped by disrupted node for reroute execution
@@ -33,6 +33,16 @@ export default function App() {
   const [rerouteActive, setRerouteActive] = useState(false);
   const [autoDetected, setAutoDetected] = useState(false);
   const processingAutoEvent = useRef(false);
+
+  // Init push notifications on first load
+  useEffect(() => {
+    initPushNotifications().then((token) => {
+      if (token) {
+        registerFcmToken(token).catch(() => {});
+        console.log("Push notifications enabled");
+      }
+    });
+  }, []);
 
   // Initial graph fetch
   useEffect(() => {

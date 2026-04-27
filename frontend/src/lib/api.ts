@@ -41,3 +41,7 @@ export async function executeReroute(
 export async function ackEvent(): Promise<void> {
   await api.post("/ack-event");
 }
+
+export async function registerFcmToken(token: string): Promise<void> {
+  await api.post("/register-fcm", { token });
+}
