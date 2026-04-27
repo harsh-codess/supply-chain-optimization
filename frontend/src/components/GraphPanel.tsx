@@ -20,15 +20,15 @@ interface GraphPanelProps {
   graphData: GraphData | null;
 }
 
-// Node positions — exact spec geographic layout (left=Asia, right=Europe/Americas)
+// Node positions — well-spaced geographic layout (Asia → Middle East → Europe, left to right)
 const NODE_POSITIONS: Record<string, { x: number; y: number }> = {
-  Shanghai_Port:    { x: 50,  y: 200 },
-  Singapore_Hub:    { x: 200, y: 300 },
-  Colombo_Port:     { x: 300, y: 350 },
-  Mumbai_Port:      { x: 350, y: 250 },
-  Dubai_Port:       { x: 450, y: 200 },
-  Rotterdam_Port:   { x: 650, y: 100 },
-  Los_Angeles_Port: { x: 100, y: 450 },
+  Shanghai_Port:    { x: 30,  y: 180 },   // Origin — far left, Asia
+  Singapore_Hub:    { x: 210, y: 340 },   // SE Asia hub
+  Los_Angeles_Port: { x: 50,  y: 510 },   // Pacific destination — bottom left
+  Colombo_Port:     { x: 410, y: 460 },   // South Asia alternate
+  Dubai_Port:       { x: 490, y: 160 },   // Middle East hub — top
+  Mumbai_Port:      { x: 600, y: 330 },   // South Asia hub — right
+  Rotterdam_Port:   { x: 780, y: 55  },   // Europe destination — far right top
 };
 
 const nodeTypes: NodeTypes = {
@@ -145,7 +145,7 @@ function GraphInner({ graphData }: GraphPanelProps) {
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="#1e293b" />
+        <Background variant={BackgroundVariant.Dots} gap={28} size={1} color="#1a1a1a" />
         <Controls showInteractive={false} className="!bottom-4 !left-4" />
       </ReactFlow>
 
@@ -167,14 +167,14 @@ function GraphInner({ graphData }: GraphPanelProps) {
 export default function GraphPanel({ graphData }: GraphPanelProps) {
   return (
     <div className="flex flex-col h-full">
-      <div className="px-5 py-4 border-b border-slate-700/50">
+      <div className="px-5 py-4 border-b border-white/5">
         <div className="flex items-center gap-3">
           <div className="w-2 h-2 rounded-full bg-[#4285F4] shadow-[0_0_8px_rgba(66,133,244,0.5)]" />
           <h2 className="text-lg font-bold text-white tracking-tight">
             Live Network Graph
           </h2>
         </div>
-        <p className="text-xs text-slate-400 mt-1 ml-5">
+        <p className="text-xs text-zinc-600 mt-1 ml-5">
           Real-time supply chain topology • {graphData?.nodes.length || 0} nodes • {graphData?.edges.length || 0} edges
         </p>
       </div>

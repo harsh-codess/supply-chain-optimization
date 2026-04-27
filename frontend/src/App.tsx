@@ -124,9 +124,9 @@ export default function App() {
   }, [disruptedNodeId]);
 
   return (
-    <div className="h-screen w-screen flex bg-[#0f172a] overflow-hidden">
+    <div className="h-screen w-screen flex bg-black overflow-hidden">
       {/* Left Panel — Control */}
-      <div className="w-[25%] min-w-[320px] border-r border-slate-700/50 bg-[#0f172a] flex flex-col">
+      <div className="w-[25%] min-w-[320px] border-r border-white/5 bg-black flex flex-col overflow-hidden">
         <ControlPanel
           graphData={graphData}
           onTrigger={handleTrigger}
@@ -136,12 +136,12 @@ export default function App() {
       </div>
 
       {/* Center Panel — Graph */}
-      <div className="flex-1 border-r border-slate-700/50 bg-[#0f172a] flex flex-col">
+      <div className="flex-1 border-r border-white/5 bg-black flex flex-col overflow-hidden">
         <GraphPanel graphData={graphData} />
       </div>
 
       {/* Right Panel — AI */}
-      <div className="w-[25%] min-w-[320px] bg-[#0f172a] flex flex-col">
+      <div className="w-[25%] min-w-[320px] bg-black flex flex-col overflow-hidden">
         <AIPanel
           aiResponse={aiResponse}
           isLoading={isLoading}
