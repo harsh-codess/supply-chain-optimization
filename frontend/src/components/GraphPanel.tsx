@@ -18,6 +18,7 @@ import type { GraphData } from "../types";
 
 interface GraphPanelProps {
   graphData: GraphData | null;
+  autoDetected?: boolean;
 }
 
 // Node positions — well-spaced geographic layout (Asia → Middle East → Europe, left to right)
@@ -163,11 +164,12 @@ function GraphInner({ graphData }: GraphPanelProps) {
   );
 }
 
-/* ── Outer wrapper provides the ReactFlow context ────────────────────── */
-export default function GraphPanel({ graphData }: GraphPanelProps) {
+
+/* ── Outer wrapper provides the ReactFlow context ────────────────── */
+export default function GraphPanel({ graphData, autoDetected }: GraphPanelProps) {
   return (
     <div className="flex flex-col h-full">
-      <div className="px-5 py-4 border-b border-white/5">
+      <div className="px-5 py-4 border-b border-white/5 flex-none">
         <div className="flex items-center gap-3">
           <div className="w-2 h-2 rounded-full bg-[#4285F4] shadow-[0_0_8px_rgba(66,133,244,0.5)]" />
           <h2 className="text-lg font-bold text-white tracking-tight">
@@ -178,6 +180,30 @@ export default function GraphPanel({ graphData }: GraphPanelProps) {
           Real-time supply chain topology • {graphData?.nodes.length || 0} nodes • {graphData?.edges.length || 0} edges
         </p>
       </div>
+
+      {/* Auto-detected event banner */}
+      {autoDetected && (
+        <div className="mx-4 mt-3 flex-none">
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#FBBC04]/10 border border-[#FBBC04]/30 animate-fade-in">
+            <div className="w-2 h-2 rounded-full bg-[#FBBC04] animate-pulse-green" />
+            <span className="text-xs font-bold text-[#FBBC04] tracking-wide">
+              ⚡ AUTO-DETECTED — Severe weather event identified by live monitoring. Gemini rerouting executed.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Manual reroute banner */}
+      {!autoDetected && graphData?.reroute?.active && (
+        <div className="mx-4 mt-3 flex-none">
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#4285F4]/10 border border-[#4285F4]/30 animate-fade-in">
+            <div className="w-2 h-2 rounded-full bg-[#4285F4]" />
+            <span className="text-xs font-bold text-[#4285F4] tracking-wide">
+              REROUTE EXECUTED — ALTERNATE ROUTE ACTIVE
+            </span>
+          </div>
+        </div>
+      )}
 
       <ReactFlowProvider>
         <GraphInner graphData={graphData} />

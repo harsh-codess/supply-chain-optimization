@@ -89,6 +89,9 @@ graph = build_graph()
 # Track reroute state
 reroute_state = {"active": False, "disrupted_edges": [], "alternate_route": []}
 
+# Auto-detected event queue (cleared after frontend acknowledges)
+pending_auto_event: dict | None = None
+
 
 # ── Pydantic Models ────────────────────────────────────────────────────────
 
@@ -151,7 +154,7 @@ def serialize_graph():
             "dependency": data.get("dependency", 0),
             "disrupted": data.get("disrupted", False),
         })
-    return {"nodes": nodes, "edges": edges, "reroute": reroute_state}
+    return {"nodes": nodes, "edges": edges, "reroute": reroute_state, "auto_event": pending_auto_event}
 
 
 # ── Gemini AI Call ─────────────────────────────────────────────────────────
@@ -253,10 +256,20 @@ async def check_weather():
 
             # Auto-trigger disruption if severe
             if wind_speed_kmh > 50 or weather_id < 250:
+                global pending_auto_event
                 severity = min(0.6 + (wind_speed_kmh / 200), 0.95)
                 context = f"Auto-detected: Wind speed {wind_speed_kmh:.0f}km/h, Weather condition ID {weather_id}"
                 graph.nodes[node_id]["risk"] = max(graph.nodes[node_id]["risk"], severity)
                 propagate_risk(graph, node_id, severity)
+                # Set pending event so frontend can pick it up and run Gemini
+                if pending_auto_event is None:  # Don't overwrite if already pending
+                    pending_auto_event = {
+                        "node_id": node_id,
+                        "severity": round(severity, 2),
+                        "disruption_type": "SEVERE_WEATHER",
+                        "context": context,
+                        "detected_at": datetime.now(timezone.utc).isoformat(),
+                    }
 
         except Exception:
             pass
@@ -383,6 +396,14 @@ async def execute_reroute(payload: ReroutePayload):
     }
 
     return {"status": "reroute_executed", "graph": serialize_graph(), "reroute": reroute_state}
+
+
+@app.post("/ack-event")
+async def acknowledge_event():
+    """Frontend calls this after processing auto_event to clear it."""
+    global pending_auto_event
+    pending_auto_event = None
+    return {"status": "cleared"}
 
 
 if __name__ == "__main__":

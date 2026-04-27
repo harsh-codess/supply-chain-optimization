@@ -25,10 +25,19 @@ export interface RerouteState {
   alternate_route: string[];
 }
 
+export interface AutoEvent {
+  node_id: string;
+  severity: number;
+  disruption_type: string;
+  context: string;
+  detected_at: string;
+}
+
 export interface GraphData {
   nodes: GraphNode[];
   edges: GraphEdge[];
   reroute: RerouteState;
+  auto_event: AutoEvent | null;
 }
 
 export interface DisruptionPayload {

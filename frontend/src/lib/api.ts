@@ -37,3 +37,7 @@ export async function executeReroute(
   const { data } = await api.post<RerouteResponse>("/reroute", payload);
   return data;
 }
+
+export async function ackEvent(): Promise<void> {
+  await api.post("/ack-event");
+}

@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import ControlPanel from "./components/ControlPanel";
 import GraphPanel from "./components/GraphPanel";
 import AIPanel from "./components/AIPanel";
-import { getGraph, triggerDisruption, resetGraph, executeReroute } from "./lib/api";
+import { getGraph, triggerDisruption, resetGraph, executeReroute, ackEvent } from "./lib/api";
 import { logDisruption } from "./lib/firebase";
 import type { GraphData, DisruptionType } from "./types";
 
@@ -31,6 +31,8 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [disruptedNodeId, setDisruptedNodeId] = useState<string | null>(null);
   const [rerouteActive, setRerouteActive] = useState(false);
+  const [autoDetected, setAutoDetected] = useState(false);
+  const processingAutoEvent = useRef(false);
 
   // Initial graph fetch
   useEffect(() => {
@@ -39,13 +41,57 @@ export default function App() {
       .catch((err) => console.error("Failed to fetch graph:", err));
   }, []);
 
-  // Poll graph every 10 seconds for live data updates
+  // Poll graph every 10 seconds — also watches for auto_event from weather monitor
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (!isLoading) {
-        getGraph()
-          .then(setGraphData)
-          .catch(() => {});
+    const interval = setInterval(async () => {
+      if (isLoading || processingAutoEvent.current) return;
+      try {
+        const data = await getGraph();
+        setGraphData(data);
+
+        // Auto-event detected from backend weather monitor
+        if (data.auto_event && !processingAutoEvent.current) {
+          processingAutoEvent.current = true;
+          setAutoDetected(true);
+          await ackEvent(); // Clear it on backend so it doesn't re-trigger
+
+          const ev = data.auto_event;
+          setIsLoading(true);
+          setAiResponse(null);
+          setRerouteActive(false);
+          setDisruptedNodeId(ev.node_id);
+
+          try {
+            // Auto-run full Gemini analysis
+            const { triggerDisruption: td } = await import("./lib/api");
+            const response = await td({
+              node_id: ev.node_id,
+              severity: ev.severity,
+              disruption_type: ev.disruption_type,
+              context: ev.context,
+            });
+            setGraphData(response.graph);
+            setAiResponse(response.ai_response);
+            await logDisruption(ev.node_id, ev.severity, ev.disruption_type);
+
+            // Auto-execute reroute
+            const rerouteConfig = REROUTE_MAP[ev.node_id];
+            if (rerouteConfig) {
+              const { executeReroute: er } = await import("./lib/api");
+              const rerouteRes = await er(rerouteConfig);
+              setGraphData(rerouteRes.graph);
+              setRerouteActive(true);
+              await logDisruption(ev.node_id, 0, "AUTO_REROUTE_EXECUTED");
+            }
+          } catch (e) {
+            console.error("Auto-event pipeline failed:", e);
+          } finally {
+            setIsLoading(false);
+            processingAutoEvent.current = false;
+          }
+        }
+      } catch {
+        // ignore poll errors
       }
     }, 10000);
     return () => clearInterval(interval);
@@ -137,7 +183,7 @@ export default function App() {
 
       {/* Center Panel — Graph */}
       <div className="flex-1 border-r border-white/5 bg-black flex flex-col overflow-hidden">
-        <GraphPanel graphData={graphData} />
+        <GraphPanel graphData={graphData} autoDetected={autoDetected} />
       </div>
 
       {/* Right Panel — AI */}
