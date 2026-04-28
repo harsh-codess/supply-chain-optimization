@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import LiveDataFeed from "./LiveDataFeed";
 import {
   CloudLightning,
   Container,
@@ -246,6 +247,11 @@ export default function ControlPanel({
             <span>📦 Port Authority Feed</span>
             <span>🚢 Carrier API Feed</span>
           </div>
+        </div>
+
+        {/* Live Data Feed */}
+        <div className="border-t border-white/5 pt-3">
+          <LiveDataFeed />
         </div>
       </div>
 

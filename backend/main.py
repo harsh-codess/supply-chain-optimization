@@ -95,6 +95,9 @@ reroute_state = {"active": False, "disrupted_edges": [], "alternate_route": []}
 # Auto-detected event queue (cleared after frontend acknowledges)
 pending_auto_event: dict | None = None
 
+# Rolling activity log of weather readings (last 50 entries)
+weather_feed: list[dict] = []
+
 # FCM tokens registered by frontend clients (phone / browser)
 fcm_tokens: set[str] = set()
 
@@ -298,6 +301,10 @@ async def check_weather():
 
             graph.nodes[node_id]["weather_score"] = round(weather_severity, 2)
 
+            # Determine action taken
+            action_taken = None
+            auto_triggered = False
+
             # Auto-trigger disruption if severe
             if wind_speed_kmh > 50 or weather_id < 250:
                 global pending_auto_event
@@ -305,8 +312,7 @@ async def check_weather():
                 context = f"Auto-detected: Wind speed {wind_speed_kmh:.0f}km/h, Weather condition ID {weather_id}"
                 graph.nodes[node_id]["risk"] = max(graph.nodes[node_id]["risk"], severity)
                 propagate_risk(graph, node_id, severity)
-                # Set pending event so frontend can pick it up and run Gemini
-                if pending_auto_event is None:  # Don't overwrite if already pending
+                if pending_auto_event is None:
                     pending_auto_event = {
                         "node_id": node_id,
                         "severity": round(severity, 2),
@@ -314,6 +320,31 @@ async def check_weather():
                         "context": context,
                         "detected_at": datetime.now(timezone.utc).isoformat(),
                     }
+                action_taken = "DISRUPTION_FLAGGED"
+                auto_triggered = True
+
+            # Build activity log entry
+            condition_str = data.get("weather", [{}])[0].get("description", "clear").title()
+            temp_c = round(data.get("main", {}).get("temp", 0), 1)
+            humidity = data.get("main", {}).get("humidity", 0)
+            risk_now = round(graph.nodes[node_id]["risk"] * 100)
+
+            entry = {
+                "node_id": node_id,
+                "city": city_info["city"],
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "temp_c": temp_c,
+                "wind_kmh": round(wind_speed_kmh, 1),
+                "condition": condition_str,
+                "humidity": humidity,
+                "weather_score": round(weather_severity * 100),
+                "risk_pct": risk_now,
+                "action": action_taken or ("RISK_ELEVATED" if weather_severity > 0.2 else "NOMINAL"),
+                "auto_triggered": auto_triggered,
+            }
+            weather_feed.append(entry)
+            if len(weather_feed) > 50:
+                weather_feed.pop(0)
 
         except Exception:
             pass
@@ -377,6 +408,12 @@ async def health():
         "weather_monitoring": weather_monitoring_active,
         "last_weather_check": last_weather_check,
     }
+
+
+@app.get("/weather-feed")
+async def get_weather_feed():
+    """Return the rolling activity log of real weather readings, newest first."""
+    return {"feed": list(reversed(weather_feed))}
 
 
 @app.get("/graph")

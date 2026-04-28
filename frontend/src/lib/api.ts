@@ -45,3 +45,22 @@ export async function ackEvent(): Promise<void> {
 export async function registerFcmToken(token: string): Promise<void> {
   await api.post("/register-fcm", { token });
 }
+
+export async function getWeatherFeed(): Promise<{ feed: WeatherEntry[] }> {
+  const { data } = await api.get<{ feed: WeatherEntry[] }>("/weather-feed");
+  return data;
+}
+
+export interface WeatherEntry {
+  node_id: string;
+  city: string;
+  timestamp: string;
+  temp_c: number;
+  wind_kmh: number;
+  condition: string;
+  humidity: number;
+  weather_score: number;
+  risk_pct: number;
+  action: string;
+  auto_triggered: boolean;
+}
