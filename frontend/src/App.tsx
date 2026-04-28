@@ -52,15 +52,48 @@ export default function App() {
             BACK TO HOME
           </button>
           <div className="w-px h-4 bg-white/10" />
-          <span className="text-[11px] font-mono text-zinc-600 tracking-widest">SUPPLYGUARD AI — LIVE DASHBOARD</span>
+          <span className="text-[11px] font-mono text-zinc-600 tracking-widest hidden sm:block">SUPPLYGUARD AI — LIVE DASHBOARD</span>
           <div className="ml-auto flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
             <span className="text-[10px] font-mono text-green-400">LIVE</span>
           </div>
         </div>
 
-        {/* The original dashboard, completely untouched */}
-        <div className="flex-1 min-h-0">
+        {/* Mobile message — shown on small screens instead of 3-col layout */}
+        <div className="flex-1 min-h-0 flex sm:hidden flex-col items-center justify-center px-6 text-center gap-6">
+          <div className="w-14 h-14 rounded-2xl bg-[#4285F4]/10 border border-[#4285F4]/20 flex items-center justify-center">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4285F4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+            </svg>
+          </div>
+          <div>
+            <p className="text-white font-bold text-lg mb-2">Open on Desktop</p>
+            <p className="text-zinc-500 text-sm leading-relaxed">The live dashboard requires a wider screen to display the network graph, AI analysis, and control panels.</p>
+          </div>
+          <div className="w-full max-w-xs rounded-xl border border-white/5 bg-zinc-900/50 p-4 text-left space-y-3">
+            <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">System Status</p>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-zinc-400">Monitoring</span>
+              <span className="text-xs font-mono text-green-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block"/>ACTIVE</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-zinc-400">Nodes tracked</span>
+              <span className="text-xs font-mono text-white">7 global ports</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-zinc-400">Push notifications</span>
+              <span className="text-xs font-mono text-green-400">✓ Registered</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-zinc-400">AI Engine</span>
+              <span className="text-xs font-mono text-[#4285F4]">Gemini 2.5 Flash</span>
+            </div>
+          </div>
+          <p className="text-[11px] text-zinc-700">You'll still receive push notifications on this device when disruptions are detected.</p>
+        </div>
+
+        {/* Full dashboard — hidden on small screens */}
+        <div className="flex-1 min-h-0 hidden sm:block">
           <DashboardApp />
         </div>
       </div>

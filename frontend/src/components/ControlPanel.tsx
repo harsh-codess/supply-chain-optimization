@@ -82,7 +82,7 @@ export default function ControlPanel({
   isLoading,
 }: ControlPanelProps) {
   const [triggeringId, setTriggeringId] = useState<string | null>(null);
-  const [lastCheck, setLastCheck] = useState<Date>(new Date());
+  const [_lastCheck, setLastCheck] = useState<Date>(new Date());
   const [tick, setTick] = useState(0);
 
   // Update "last check" every 5 minutes (same as backend poll)

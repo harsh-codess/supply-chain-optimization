@@ -172,7 +172,7 @@ export default function AIPanel({
   }, [graphData]);
 
   // Build alternate route polyline path
-  const alternatePath = useMemo(() => {
+  const _alternatePath = useMemo(() => {
     if (!graphData?.reroute?.active || !graphData.reroute.alternate_route.length)
       return [];
     return graphData.reroute.alternate_route
