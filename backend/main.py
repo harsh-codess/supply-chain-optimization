@@ -98,8 +98,8 @@ pending_auto_event: dict | None = None
 # Rolling activity log of weather readings (last 50 entries)
 weather_feed: list[dict] = []
 
-# FCM tokens registered by frontend clients (phone / browser)
-fcm_tokens: set[str] = set()
+# FCM tokens registered by frontend clients — persisted in Firestore (not in-memory)
+# fcm_tokens set removed: use _get_tokens() / _save_token() / _remove_token() instead
 
 # Initialize Firebase Admin SDK with service account
 _SA_PATH = os.path.join(os.path.dirname(__file__), "supply-chain-76169-firebase-adminsdk-fbsvc-ae9fde0918.json")
@@ -112,6 +112,35 @@ try:
         print("WARNING: serviceAccount.json not found — push notifications disabled")
 except Exception as _e:
     print(f"Firebase Admin init error: {_e}")
+
+# ── Firestore token helpers ───────────────────────────────────────────────
+
+def _db():
+    """Return Firestore client (lazy, reuses existing Firebase app)."""
+    from google.cloud import firestore as _fs
+    return _fs.Client(project="supply-chain-76169")
+
+def _get_tokens() -> list[str]:
+    try:
+        db = _db()
+        return [doc.id for doc in db.collection("fcm_tokens").stream()]
+    except Exception as e:
+        print(f"Firestore get_tokens error: {e}")
+        return []
+
+def _save_token(token: str):
+    try:
+        db = _db()
+        db.collection("fcm_tokens").document(token).set({"ts": __import__('datetime').datetime.utcnow().isoformat()})
+    except Exception as e:
+        print(f"Firestore save_token error: {e}")
+
+def _remove_token(token: str):
+    try:
+        db = _db()
+        db.collection("fcm_tokens").document(token).delete()
+    except Exception as e:
+        print(f"Firestore remove_token error: {e}")
 
 
 # ── Pydantic Models ────────────────────────────────────────────────────────
@@ -186,10 +215,12 @@ def serialize_graph():
 
 def send_push_notification(title: str, body: str, data: dict | None = None):
     """Send FCM push to all registered tokens via Firebase Admin SDK (V1 API)."""
-    if not fcm_tokens:
+    tokens = _get_tokens()
+    if not tokens:
+        print("No FCM tokens registered — skipping push")
         return
     str_data = {k: str(v) for k, v in (data or {}).items()}
-    for token in list(fcm_tokens):
+    for token in tokens:
         try:
             message = fcm_messaging.Message(
                 notification=fcm_messaging.Notification(title=title, body=body),
@@ -203,7 +234,7 @@ def send_push_notification(title: str, body: str, data: dict | None = None):
             fcm_messaging.send(message)
         except Exception as e:
             print(f"FCM send error for token {token[:20]}...: {e}")
-            fcm_tokens.discard(token)  # remove invalid tokens
+            _remove_token(token)  # remove invalid tokens from Firestore
 
 
 async def call_gemini(node_id: str, severity: float, disruption_type: str, context: str) -> str:
@@ -497,10 +528,11 @@ async def acknowledge_event():
 
 @app.post("/register-fcm")
 async def register_fcm(payload: FcmTokenPayload):
-    """Store FCM token from a browser/phone client."""
-    fcm_tokens.add(payload.token)
-    print(f"FCM token registered. Total devices: {len(fcm_tokens)}")
-    return {"status": "registered", "devices": len(fcm_tokens)}
+    """Store FCM token in Firestore — survives container restarts."""
+    _save_token(payload.token)
+    tokens = _get_tokens()
+    print(f"FCM token registered. Total devices: {len(tokens)}")
+    return {"status": "registered", "devices": len(tokens)}
 
 
 if __name__ == "__main__":
