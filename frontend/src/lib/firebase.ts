@@ -124,9 +124,9 @@ export async function initPushNotifications(): Promise<string | null> {
       if (Notification.permission === "granted") {
         new Notification(title, {
           body,
-          icon:    "/favicon.ico",
-          vibrate: [200, 100, 200],
-        });
+          icon: "/favicon.ico",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any);
       }
     });
 
