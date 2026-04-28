@@ -18,6 +18,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+import firebase_admin
+from firebase_admin import credentials, messaging as fcm_messaging
+
 from google import genai
 from google.genai import types
 
@@ -95,7 +98,17 @@ pending_auto_event: dict | None = None
 # FCM tokens registered by frontend clients (phone / browser)
 fcm_tokens: set[str] = set()
 
-FCM_SERVER_KEY = os.getenv("FCM_SERVER_KEY", "")
+# Initialize Firebase Admin SDK with service account
+_SA_PATH = os.path.join(os.path.dirname(__file__), "supply-chain-76169-firebase-adminsdk-fbsvc-ae9fde0918.json")
+try:
+    if os.path.exists(_SA_PATH):
+        cred = credentials.Certificate(_SA_PATH)
+        firebase_admin.initialize_app(cred)
+        print("Firebase Admin SDK initialized")
+    else:
+        print("WARNING: serviceAccount.json not found — push notifications disabled")
+except Exception as _e:
+    print(f"Firebase Admin init error: {_e}")
 
 
 # ── Pydantic Models ────────────────────────────────────────────────────────
@@ -169,32 +182,25 @@ def serialize_graph():
 # ── FCM Push Notifications ───────────────────────────────────────────────
 
 def send_push_notification(title: str, body: str, data: dict | None = None):
-    """Send FCM push to all registered tokens via FCM HTTP API."""
-    if not FCM_SERVER_KEY or not fcm_tokens:
+    """Send FCM push to all registered tokens via Firebase Admin SDK (V1 API)."""
+    if not fcm_tokens:
         return
-    try:
-        for token in list(fcm_tokens):
-            payload = {
-                "to": token,
-                "notification": {"title": title, "body": body},
-                "data": data or {},
-                "android": {"priority": "high"},
-                "apns": {"headers": {"apns-priority": "10"}},
-            }
-            resp = requests.post(
-                "https://fcm.googleapis.com/fcm/send",
-                json=payload,
-                headers={
-                    "Authorization": f"key={FCM_SERVER_KEY}",
-                    "Content-Type": "application/json",
-                },
-                timeout=10,
+    str_data = {k: str(v) for k, v in (data or {}).items()}
+    for token in list(fcm_tokens):
+        try:
+            message = fcm_messaging.Message(
+                notification=fcm_messaging.Notification(title=title, body=body),
+                data=str_data,
+                android=fcm_messaging.AndroidConfig(priority="high"),
+                apns=fcm_messaging.APNSConfig(
+                    headers={"apns-priority": "10"}
+                ),
+                token=token,
             )
-            if resp.status_code != 200:
-                print(f"FCM error {resp.status_code}: {resp.text}")
-    except Exception as e:
-        print(f"FCM send failed: {e}")
-
+            fcm_messaging.send(message)
+        except Exception as e:
+            print(f"FCM send error for token {token[:20]}...: {e}")
+            fcm_tokens.discard(token)  # remove invalid tokens
 
 
 async def call_gemini(node_id: str, severity: float, disruption_type: str, context: str) -> str:

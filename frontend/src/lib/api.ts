@@ -9,8 +9,8 @@ import type {
 } from "../types";
 
 const api = axios.create({
-  baseURL: "http://localhost:8000",
-  timeout: 60000, // Gemini calls can take time
+  baseURL: "/api",
+  timeout: 60000,
   headers: { "Content-Type": "application/json" },
 });
 
