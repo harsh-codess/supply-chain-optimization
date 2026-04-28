@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY main.py .
+COPY supply-chain-76169-firebase-adminsdk-fbsvc-ae9fde0918.json .
 
 # Cloud Run injects PORT env variable; default to 8080
 ENV PORT=8080

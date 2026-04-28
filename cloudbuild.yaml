@@ -4,15 +4,13 @@
 substitutions:
   _SERVICE_NAME: supply-chain-backend
   _REGION: us-central1
-  _IMAGE: gcr.io/$PROJECT_ID/supply-chain-backend
+  _IMAGE: gcr.io/supply-chain-76169/supply-chain-backend
 
 steps:
   # Build the Docker image
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - build
-      - '-t'
-      - '$_IMAGE:$SHORT_SHA'
       - '-t'
       - '$_IMAGE:latest'
       - '.'
@@ -22,8 +20,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - push
-      - '--all-tags'
-      - '$_IMAGE'
+      - '$_IMAGE:latest'
 
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -32,7 +29,7 @@ steps:
       - run
       - deploy
       - '$_SERVICE_NAME'
-      - '--image=$_IMAGE:$SHORT_SHA'
+      - '--image=$_IMAGE:latest'
       - '--region=$_REGION'
       - '--platform=managed'
       - '--allow-unauthenticated'
@@ -41,11 +38,9 @@ steps:
       - '--cpu=1'
       - '--min-instances=0'
       - '--max-instances=10'
-      - '--set-env-vars=GEMINI_API_KEY=$$GEMINI_API_KEY,OPENWEATHER_API_KEY=$$OPENWEATHER_API_KEY'
-      - '--set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest,OPENWEATHER_API_KEY=OPENWEATHER_API_KEY:latest'
+      - '--set-env-vars=GEMINI_API_KEY=AIzaSyBXsdI9Pkz-M_zWy5N80NDXBRQ6SlJ0uqs,OPENWEATHER_API_KEY=d13ed844b16f346128a7641675acfb91,GOOGLE_MAPS_API_KEY=AIzaSyBLme1rE9xCWsCtDUBrKNY4Rd41hDQ72jw'
 
 images:
-  - '$_IMAGE:$SHORT_SHA'
   - '$_IMAGE:latest'
 
 options:

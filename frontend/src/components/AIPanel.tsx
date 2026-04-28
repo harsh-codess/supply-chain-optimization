@@ -171,18 +171,6 @@ export default function AIPanel({
     }));
   }, [graphData]);
 
-  // Build alternate route polyline path
-  const _alternatePath = useMemo(() => {
-    if (!graphData?.reroute?.active || !graphData.reroute.alternate_route.length)
-      return [];
-    return graphData.reroute.alternate_route
-      .map((nodeId) => {
-        const node = graphData.nodes.find((n) => n.id === nodeId);
-        return node ? { lat: node.lat, lng: node.lng } : null;
-      })
-      .filter(Boolean) as { lat: number; lng: number }[];
-  }, [graphData]);
-
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* Header */}
